@@ -7,10 +7,8 @@ verify_ssl = true
 
 [packages]
 pandas = "*"
-mysql = "*"
 mysql-connector = "*"
 mysql-connector-python = "*"
-requests = "*"
 
 [requires]
 python_version = "3.7"
