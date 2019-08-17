@@ -6,6 +6,7 @@ import sys
 import socket
 import os
 import pandas as pd
+import numpy as np
 import math
 import mysql.connector as connector
 import traceback
@@ -15,8 +16,13 @@ class Server(BaseHTTPRequestHandler):
     #Sets the header response
     def _set_response(self):
         
+        #Set response code
         self.send_response(200)
+
+        #Set response header
         self.send_header('Content-Type', 'application/json',)
+
+        #Complete the header
         self.end_headers()
         
     #Reacts to the POST from the app
@@ -28,6 +34,7 @@ class Server(BaseHTTPRequestHandler):
         #Retrieves the data itself
         post_data = self.rfile.read(content_length)
         
+        #Prints all info of recieved POST
         #logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
         #      str(self.path), str(self.headers), post_data.decode('utf-8'))
 
@@ -50,6 +57,7 @@ class Server(BaseHTTPRequestHandler):
         #Sends the response to the app
         self.wfile.write(json_string.encode('utf-8'))
 
+    #Function to organize the JSON being transferred
     def parseJSON(self, jsonText):
         
         #Selects the location list
@@ -102,10 +110,12 @@ class Server(BaseHTTPRequestHandler):
             #Increment row counter
             i += 1
         
-        #Returns the complete dataframe
+        #Returns the complete dataframe, fixes all nans
         frame.fillna(0)
+        print(frame)
         return frame
 
+    #Store the parsed data in an SQL database
     def storeInSQL(self, df):
         
         #Connects the database to my script
@@ -124,9 +134,6 @@ class Server(BaseHTTPRequestHandler):
                                  user=keysList[1],
                                  passwd=keysList[2],
                                  database=keysList[3])
-
-        #For testing
-        #return False
 
         #The navigator of the database
         mycursor = mydb.cursor()
@@ -148,37 +155,59 @@ class Server(BaseHTTPRequestHandler):
                 
             #Format the array into a tuple, and add it to overall table
             tempArr = tuple(tempArr)
-            print(tempArr)
+
+            #Print array to the console for testing
+            #print(tempArr)
+            
+            #Add the 1D array to the 2D array
             totalArr.append(tempArr)
             tempArr = []
         
-        
         try:
+
+            #Set the SQL formula to be ran
             sqlFormula = """INSERT IGNORE INTO location
                             (timestamp, coordinates, altitude, data_type, speed, motion, battery_level, battery_state, accuracy, wifi) 
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            
+            #For every array in the 2D array, execute the SQL code
             mycursor.executemany(sqlFormula, list(totalArr))
+            
+            #Solidify the changes
             mydb.commit()
             print('\nSuccess! Stored ' + str(countRow) + ' values in SQL database\n')
+
+            #Return true as the boolean for the response to API
             return True
         except:
+
+            #Print the error
             traceback.print_exc()
             print("ERROR: Not sending confirmation. Please check database")
+
+            #Return false as the boolean for the response to the API
             return False 
            
-
+#Main run class
 def run(server_class=HTTPServer, handler_class=Server, port=8080):
+    
+    #Set the base for the logging tool
     logging.basicConfig(level=logging.INFO)
     server_address = ('', port)
+
+    #Initialize an object for connection
     httpd = server_class(server_address, handler_class)
+
+    #Setup a tool to let me see the local IP
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
-    print(s.getsockname()[0])
-    
+
+    #Prints the IP address I need to connect to
     logging.info('Starting Endpoint For Overland on IP: ' + str(s.getsockname()[0]) + ':' + str(port) + '\n') 
     s.close()
 
     try:
+        #Serves until it gets a POST
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
@@ -188,6 +217,7 @@ def run(server_class=HTTPServer, handler_class=Server, port=8080):
 if __name__ == '__main__':
     from sys import argv
 
+    #Set the port with a cmd arg
     if len(argv) == 2:
         run(port=int(argv[1]))
     else:
