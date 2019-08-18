@@ -10,6 +10,7 @@ import numpy as np
 import math
 import mysql.connector as connector
 import traceback
+import shutil
 
 class Server(BaseHTTPRequestHandler):
 
@@ -56,6 +57,11 @@ class Server(BaseHTTPRequestHandler):
         
         #Sends the response to the app
         self.wfile.write(json_string.encode('utf-8'))
+        columns, rows = shutil.get_terminal_size(fallback=(100, 200))
+        print('-'*columns)
+
+
+
 
     #Function to organize the JSON being transferred
     def parseJSON(self, jsonText):
@@ -179,6 +185,7 @@ class Server(BaseHTTPRequestHandler):
 
             #Return true as the boolean for the response to API
             return True
+        
         except:
 
             #Print the error
